@@ -34,6 +34,8 @@ class TrackingFragment : Fragment(R.layout.fragment_tracking), EasyPermissions.P
     private var map: GoogleMap? = null
     private lateinit var binding: FragmentTrackingBinding
 
+    private var curTimeInMillis = 0L
+
     private var isTracking = false
     private var pathPoints = mutableListOf<Polyline>()
     override fun onCreateView(
@@ -102,6 +104,12 @@ class TrackingFragment : Fragment(R.layout.fragment_tracking), EasyPermissions.P
             pathPoints = it
             addLatestPolyline()
             moveCameraToUser()
+        })
+
+        TrackingService.timeRunInMillis.observe(viewLifecycleOwner, Observer {
+            curTimeInMillis = it
+            val formattedTime = TrackingUtility.getFormattedStopWatchTime(curTimeInMillis,true)
+            binding.tvTimer.text = formattedTime
         })
     }
     private fun toggleRun(){
