@@ -1,8 +1,11 @@
 package com.bertonoon.mvvmrunningapp.di
 
 import android.content.Context
+import android.content.Context.MODE_PRIVATE
+import android.content.SharedPreferences
 import androidx.room.Room.databaseBuilder
 import com.bertonoon.mvvmrunningapp.db.RunningDatabase
+import com.bertonoon.mvvmrunningapp.other.Constants
 import com.bertonoon.mvvmrunningapp.other.Constants.RUNNING_DATABASE_NAME
 import dagger.Module
 import dagger.Provides
@@ -28,4 +31,26 @@ object AppModule {
     @Singleton
     @Provides
     fun provideRunDao(db: RunningDatabase) = db.getRunDao()
+
+    @Singleton
+    @Provides
+    fun provideSharedPreferences(@ApplicationContext app: Context) =
+        app.getSharedPreferences(Constants.SHARED_PREFERENCES_NAME, MODE_PRIVATE)
+
+    @Singleton
+    @Provides
+    fun provideName(sharedPref: SharedPreferences) =
+        sharedPref.getString(Constants.KEY_NAME, "") ?: ""
+
+    @Singleton
+    @Provides
+    fun provideWeight(sharedPref: SharedPreferences) =
+        sharedPref.getFloat(Constants.KEY_WEIGHT, 70f)
+
+    @Singleton
+    @Provides
+    fun provideFirstTimeToggle(sharedPref: SharedPreferences) =
+        sharedPref.getBoolean(Constants.KEY_FIRST_TIME_TOGGLE, true)
+
+
 }

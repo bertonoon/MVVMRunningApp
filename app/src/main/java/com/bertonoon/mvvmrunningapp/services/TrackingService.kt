@@ -45,6 +45,7 @@ typealias Polylines = MutableList<Polyline>
 class TrackingService : LifecycleService() {
 
     private var isFirstRun = true
+    private var serviceKilled = false
     private val timeRunInSeconds = MutableLiveData<Long>()
 
     @Inject
@@ -77,6 +78,15 @@ class TrackingService : LifecycleService() {
         })
     }
 
+    private fun killService() {
+        serviceKilled = true
+        isFirstRun = true
+        pauseService()
+        postInitialValues()
+        stopForeground(true)
+        stopSelf()
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         intent?.let {
             when (it.action) {
@@ -97,6 +107,7 @@ class TrackingService : LifecycleService() {
 
                 Constants.ACTION_STOP_SERVICE -> {
                     Timber.d("Stopped service")
+                    killService()
                 }
             }
         }
@@ -154,9 +165,11 @@ class TrackingService : LifecycleService() {
             isAccessible = true
             set(curNotificationBuilder, ArrayList<NotificationCompat.Action>())
         }
-        curNotificationBuilder = baseNotificationBuilder
-            .addAction(R.drawable.ic_pause_black_24dp, notificationActionText, pendingIntent)
-        notificationManager.notify(Constants.NOTIFICATION_ID, curNotificationBuilder.build())
+        if (!serviceKilled) {
+            curNotificationBuilder = baseNotificationBuilder.addAction(
+                R.drawable.ic_pause_black_24dp, notificationActionText, pendingIntent)
+            notificationManager.notify(Constants.NOTIFICATION_ID, curNotificationBuilder.build())
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -169,9 +182,7 @@ class TrackingService : LifecycleService() {
                     priority = PRIORITY_HIGH_ACCURACY
                 }
                 fusedLocationProviderClient.requestLocationUpdates(
-                    request,
-                    locationCallback,
-                    Looper.getMainLooper()
+                    request, locationCallback, Looper.getMainLooper()
                 )
             }
         } else {
@@ -222,18 +233,21 @@ class TrackingService : LifecycleService() {
         startForeground(Constants.NOTIFICATION_ID, baseNotificationBuilder.build())
 
         timeRunInSeconds.observe(this, Observer {
-            val notification = curNotificationBuilder
-                .setContentText(TrackingUtility.getFormattedStopWatchTime(it*1000L))
-            notificationManager.notify(Constants.NOTIFICATION_ID,notification.build())
+            if (!serviceKilled) {
+                val notification = curNotificationBuilder.setContentText(
+                    TrackingUtility.getFormattedStopWatchTime(
+                        it * 1000L
+                    )
+                )
+                notificationManager.notify(Constants.NOTIFICATION_ID, notification.build())
+            }
         })
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
     private fun createNotificationChannel(notificationManager: NotificationManager) {
         val channel = NotificationChannel(
-            Constants.NOTIFICATION_CHANNEL_ID,
-            Constants.NOTIFICATION_CHANNEL_NAME,
-            IMPORTANCE_HIGH
+            Constants.NOTIFICATION_CHANNEL_ID, Constants.NOTIFICATION_CHANNEL_NAME, IMPORTANCE_HIGH
         )
         notificationManager.createNotificationChannel(channel)
     }
